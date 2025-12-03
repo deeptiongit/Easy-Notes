@@ -1,0 +1,30 @@
+name: Deploy Pipeline (Cloud Build)
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: 'read'
+
+jobs:
+  trigger-cloud-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: ${{ secrets.GCP_PROJECT }}
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Trigger Cloud Build
+        env:
+          PIPELINE_BUCKET: ${{ secrets.PIPELINE_BUCKET }}
+          REGION: ${{ secrets.GCP_REGION }}
+        run: |
+          # Trigger a build using the repository's cloudbuild.yaml
+          gcloud builds submit --config cloudbuild.yaml . \
+            --substitutions=_PIPELINE_BUCKET=${PIPELINE_BUCKET},_REGION=${REGION}

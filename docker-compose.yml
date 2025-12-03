@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - extraction-service
+      - prediction-service
+    networks:
+      - app-network
+    environment:
+      - VITE_API_URL=http://localhost:8000
+
+  # Extraction Service
+  extraction-service:
+    build:
+      context: .
+      dockerfile: backend/extraction_service/Dockerfile
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+    networks:
+      - app-network
+    environment:
+      - DATABASE_URL=postgresql://user:password@db:5432/automation_db
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - ./uploads:/app/uploads
+
+  # Prediction Service
+  prediction-service:
+    build:
+      context: .
+      dockerfile: backend/prediction_service/Dockerfile
+    ports:
+      - "8001:8000"
+    depends_on:
+      - db
+    networks:
+      - app-network
+    environment:
+      - DATABASE_URL=postgresql://user:password@db:5432/automation_db
+
+  # Database
+  db:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    networks:
+      - app-network
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=automation_db
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+    volumes:
+      - redis-data:/data
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:

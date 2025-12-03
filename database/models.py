@@ -1,8 +1,9 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
-from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
+from datetime import datetime
 
-Base = declarative_base()
+from sqlalchemy import Column, Integer, String, ForeignKey, Text, DateTime
+from sqlalchemy.orm import relationship
+
+from .database import Base, FeedbackBase
 
 class Log(Base):
     __tablename__: str = 'Logs'
@@ -24,3 +25,12 @@ class Client(Base):
     password = Column(String)
 
     logs = relationship('Log', back_populates="handle")
+
+
+class FeedbackData(FeedbackBase):
+    __tablename__ = "feedback_data"
+    id = Column(Integer, primary_key=True, index=True)
+    document_id = Column(String, index=True)
+    ocr_text = Column(Text)
+    doc_type = Column(String)
+    date = Column(DateTime, default=datetime.utcnow)
