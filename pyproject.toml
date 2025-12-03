@@ -41,5 +41,5 @@ dependencies = [
 
 [tool.uv.workspace]
 members = [
-    "backend/prediction_service/phi3llm",
+    "backend/prediction_service/phi3",
 ]
