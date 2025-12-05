@@ -32,7 +32,7 @@ def parse_args():
 
 
 def export_to_csv(out_path: str, limit: int = 0, since: str | None = None) -> int:
-    # Create output directory if needed
+    
     out_dir = os.path.dirname(out_path)
     os.makedirs(out_dir if out_dir else ".", exist_ok=True)
 
@@ -43,7 +43,7 @@ def export_to_csv(out_path: str, limit: int = 0, since: str | None = None) -> in
     try:
         query = db.query(FeedbackData).order_by(FeedbackData.date.asc())
 
-        # Filter by datetime
+       
         if since:
             try:
                 dt = datetime.fromisoformat(since)
@@ -57,7 +57,7 @@ def export_to_csv(out_path: str, limit: int = 0, since: str | None = None) -> in
 
         rows = query.all()
 
-        # Write CSV
+        #
         with open(out_path, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
             writer.writerow(["id", "document_id", "ocr_text", "doc_type", "date"])
@@ -75,7 +75,7 @@ def export_to_csv(out_path: str, limit: int = 0, since: str | None = None) -> in
         return 0
 
     except Exception as e:
-        print(f"❌ ERROR: {e}")
+        print(f" ERROR: {e}")
         return 1
 
     finally:
