@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.extraction_service.app.routers import extract, erp, client, auth
+from backend.extraction_service.app.routers import extract, erp, client, auth, remove
 from backend.CRM import crm
 from database import models, database
 from dotenv import load_dotenv
@@ -28,6 +28,7 @@ app.include_router(extract.router)
 app.include_router(erp.router)
 app.include_router(client.router)
 app.include_router(crm.router)
+app.include_router(remove.router)
 
 @app.get("/")
 def root():

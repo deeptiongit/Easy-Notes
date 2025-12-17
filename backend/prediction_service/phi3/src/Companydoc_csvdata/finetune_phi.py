@@ -7,7 +7,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 
 BASE_DIR = os.path.dirname(__file__)
-preprocessed_data_dir = os.path.join(BASE_DIR, "rag_pipeline", "train.jsonl")
+preprocessed_data_dir = os.path.join(BASE_DIR,  "train.jsonl")
 output_dir = os.path.join(BASE_DIR, "results_lora")
 
 os.makedirs(output_dir, exist_ok=True)
@@ -25,11 +25,13 @@ bnb_config = BitsAndBytesConfig(
 
 model = AutoModelForCausalLM.from_pretrained(
     model_name,
+    dtype=torch.float16,
     quantization_config=bnb_config,
     device_map="auto",
 )
 
 model = prepare_model_for_kbit_training(model)
+
 
 lora_config = LoraConfig(
     r=8,
@@ -37,7 +39,10 @@ lora_config = LoraConfig(
     lora_dropout=0.1,
     bias="none",
     task_type="CAUSAL_LM",
-    target_modules=["q_proj", "v_proj", "o_proj"],
+    target_modules=[
+    "q_proj", "k_proj", "v_proj", "o_proj",
+    "gate_proj", "up_proj", "down_proj"
+],
 )
 
 model = get_peft_model(model, lora_config)
@@ -68,13 +73,15 @@ train_params = SFTConfig(
     num_train_epochs=3,
     per_device_train_batch_size=1,
     gradient_accumulation_steps=1,
-    optim="adamw_torch"
+    optim="adamw_torch_fused",
     save_steps=500,
     logging_steps=50,
     learning_rate=1e-4,
     weight_decay=0.001,
     fp16=True,
-    bf16=False,            
+    bf16=False,
+    bf16_full_eval=False,
+    fp16_opt_level="O2",            
     max_grad_norm=0.3,
     warmup_ratio=0.03,
     group_by_length=True,
@@ -84,14 +91,11 @@ train_params = SFTConfig(
     max_length=512
 )
 
-def tokenize_function(example):
-    return tokenizer(example["text"], truncation=True, max_length=512)
+
 
 fine_tuning = SFTTrainer(
     model=model,
     train_dataset=train_data,
-    peft_config=lora_config,
-    processing_class=tokenize_function, 
     args=train_params
 )
 

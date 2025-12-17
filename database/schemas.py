@@ -18,9 +18,8 @@ class Client(BaseModel):
 class ShowClient(BaseModel):
     name:str
     email:str
-    # blogs : List[Log] =[]
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class ShowLog(BaseModel):
     title: str

@@ -11,7 +11,6 @@ FEEDBACK_DATABASE_URL = os.getenv("FEEDBACK_DATABASE_URL", "sqlite:///./feedback
 log_engine = create_engine(LOG_DATABASE_URL, connect_args={"check_same_thread": False})
 feedback_engine = create_engine(FEEDBACK_DATABASE_URL, connect_args={"check_same_thread": False})
 
-# Backwards-compatibility alias expected elsewhere in the codebase
 engine = log_engine
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=log_engine)
@@ -22,15 +21,13 @@ FeedbackBase = declarative_base()
 
 
 def init_log_db() -> None:
-    """Ensure log-related tables exist."""
-    from . import models  # noqa: WPS433 (import inside function for circular safety)
+    from . import models 
 
     Base.metadata.create_all(bind=log_engine)
 
 
 def init_feedback_db() -> None:
-    """Ensure feedback-related tables exist."""
-    from . import models  # noqa: WPS433
+    from . import models  
 
     FeedbackBase.metadata.create_all(bind=feedback_engine)
 

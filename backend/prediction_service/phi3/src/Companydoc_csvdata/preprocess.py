@@ -1,10 +1,10 @@
 import os
 import re
 import json
+from click import prompt
 import torch
 import pandas as pd
 from tqdm import tqdm
-from peft import PeftModel
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
 
@@ -12,9 +12,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 BASE_DIR = os.path.dirname(__file__)
 INPUT_FOLDER = os.path.join(BASE_DIR, "invoices")
 OUTPUT_FILE = os.path.join(BASE_DIR, "results.csv")
-
-base_model_id = "microsoft/Phi-3-mini-128k-instruct"
-adapter_path = os.path.join(BASE_DIR, "fine_tuned_model")
+model = "microsoft/Phi-3-mini-128k-instruct"
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -73,10 +71,16 @@ SCHEMA2 = """
 """
 
 
+tokenizer = AutoTokenizer.from_pretrained(model)
+model = AutoModelForCausalLM.from_pretrained(
+    model,
+    device_map="auto",
+    dtype=torch.float16,
+    low_cpu_mem_usage=True,
+    offload_folder="./offload")
 
-base_model = AutoModelForCausalLM.from_pretrained(base_model_id, device_map="auto")
-model = PeftModel.from_pretrained(base_model, adapter_path).eval()
-tokenizer = AutoTokenizer.from_pretrained(base_model_id)
+model.config.use_cache = True
+model.eval()
 
 
 
@@ -84,28 +88,34 @@ tokenizer = AutoTokenizer.from_pretrained(base_model_id)
 def preprocess_report(ocr_text):
 
     prompt = f"""
-You are a document extraction agent.
-Use the following schemas:
+      You are a document extraction agent.
+      Use the following schemas:
 
-Invoice Schema:
-{SCHEMA1}
+      Invoice Schema:
+      {SCHEMA1}
 
-Shipping Schema:
-{SCHEMA2}
+      Shipping Schema:
+      {SCHEMA2}
 
-Extract the correct JSON from this document:
+      Extract the correct JSON from this document:
 
-{ocr_text}
+      {ocr_text}
 
-Return ONLY JSON:
-"""
-
-    inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+      Return ONLY JSON:
+      """
+    assert isinstance(prompt, str)
+    assert len(prompt.strip()) > 0
+    inputs = tokenizer(
+    prompt,
+    return_tensors="pt",
+    truncation=True,
+    max_length=512,
+    ).to(model.device)
 
     with torch.inference_mode():
         outputs = model.generate(
             **inputs,
-            max_new_tokens=600,
+            max_new_tokens=200,
             temperature=0.0,
             do_sample=False
         )

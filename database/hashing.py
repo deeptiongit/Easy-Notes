@@ -8,7 +8,6 @@ pwd_cxt = CryptContext(schemes=["bcrypt"], deprecated="auto")
 class Hash:
     @staticmethod
     def _normalize(password: str) -> str:
-        # Bcrypt only reads the first 72 bytes; hashing keeps length constant
         return hashlib.sha256(password.encode("utf-8")).hexdigest()
 
     @classmethod

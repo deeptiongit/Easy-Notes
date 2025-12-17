@@ -6,8 +6,7 @@ class FeedbackData(BaseModel):
     UserID: str
 
 class DocumentLog(FeedbackData):
-    UserID :int
-    document_id :str
+    UserID :str
     ocr_text :str
     doc_type :str
     review:str
@@ -15,3 +14,4 @@ class DocumentLog(FeedbackData):
 
     class Config:
         orm_mode = True
+

@@ -75,7 +75,7 @@ def export_to_csv(out_path: str, limit: int = 0, since: str | None = None) -> in
         return 0
 
     except Exception as e:
-        print(f"❌ ERROR: {e}")
+        print(f" ERROR: {e}")
         return 1
 
     finally:

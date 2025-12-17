@@ -1,27 +1,22 @@
-from fastapi import  APIRouter, Depends, Request
-from fastapi.responses import JSONResponse
+from fastapi import  APIRouter, Depends, HTTPException
 from textblob import TextBlob
 from database.repository.feedbackLog import feedbackInstance
 from database.schemas.feedback import DocumentLog
 from database import schemas, database
-from backend.extraction_service.app.utils import oauth2
+from backend.extraction_service.app.utils import currentuser
 from sqlalchemy.orm import Session
-import os
+from fastapi import APIRouter,Depends
+from backend.cache.redis_client import redis_client
+import json
+
+get_db = database.get_db
+get_feedback_db = database.get_feedback_db
 
 
+router = APIRouter(tags=['CRM'])
 
-router = APIRouter(prefix="/crm", tags=['CRM'])
 
-@router.get("/")
-def root():
-    return {"message": "CRM Service API", "version": "1.0.0"}
-
-@router.get("/health")
-def health_check():
-    return {"status": "healthy", "service": "crm-service"}
-
-@router.post('/api/sentiment')
-def get_sentiment(text: str, current_user: schemas.Client = Depends(oauth2.get_current_user)):
+def get_sentiment(text: str):
     polarity = TextBlob(text).sentiment.polarity
     if polarity > 0.1:
         return "Positive"
@@ -38,33 +33,47 @@ def generate_reply(sentiment: str, username: str):
     else:
         return f"We're sorry to hear that, {username}. We'll work to resolve this immediately. "
 
-@router.post('/api/review')
-async def handle_review(
-    request: Request, 
-    db: Session = Depends(database.get_db), 
-    current_user: schemas.Client = Depends(oauth2.get_current_user)
+
+
+@router.post("/api/feedback")
+def handle_review(
+    review: str,
+    feedback_db: Session = Depends(database.get_feedback_db),
+    current_user: schemas.client.Client = Depends(currentuser.get_current_client)
 ):
-    data = await request.json()
-    username = data.get('username')
-    review = data.get('review')
+    redis_key = f"doc_context:{current_user.email}"
+
+    cached = redis_client.get(redis_key)
+
+    if not cached:
+        raise HTTPException(
+            status_code=400,
+            detail="Please upload a document first."
+        )
+
+    context = json.loads(cached)
 
     feedbacklog = DocumentLog(
-        UserID=username,
-        document_id=data.get('document_id'),
-        ocr_text=data.get('product_name'),
-        doc_type=data.get('doc_type'),
+        UserID=current_user.email,
+        ocr_text=context["ocr_text"],
+        doc_type=context["doc_type"],
         review=review,
-        date=data.get('DataTime')
+        date=context["date"]
     )
 
-    sentiment = get_sentiment(review, current_user)
-    reply = generate_reply(sentiment, username)
+    sentiment = get_sentiment(review)
+    reply = generate_reply(sentiment, current_user.name)
 
     if sentiment == "Negative":
-        feedbackInstance(feedbacklog, db)
+        feedbackInstance(feedbacklog, feedback_db)
 
-    return JSONResponse({
+    redis_client.delete(redis_key)
+
+    return {
         "sentiment": sentiment,
         "reply": reply
-    })
+    }
+
+
+
 
